@@ -1,0 +1,119 @@
+---
+title: "585-Final-rmd"
+author: "Ryan O'Dea"
+date: "12/22/2020"
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup}
+knitr::opts_chunk$set(echo = FALSE)
+pacman::p_load(
+  ggplot2,
+  tidyverse,
+  forecast,
+  tseries,
+  timeDate
+)
+```
+
+```{r data-intake}
+#Raw intake
+cred <- read.csv("TOTBKCR.csv")
+
+#TS coercion and subsetting
+credts <- ts(cred$TOTBKCR, frequency = 52, start=c(1973,1))
+window <- window(credts, 2012, 2019, 52)
+
+```
+
+```{r rough-merge}
+plot(window)
+auto.arima(window)
+#2,2,2
+#ar= -.9408,-.0423 MA= -.0768,-.8328
+
+dwindow <-decompose(window)
+
+plot(decompose(lcredts),main="help")
+
+par(mfrow=c(2,2))
+plot(credts,main="Total Bank Credit (TBC) per Week",ylab="TBC")
+dif<-diff(credts)
+plot(dif,main="Differenced TBC",ylab="Once Differenced TBC")
+fit=lm(credts~c(1:2466))
+plot(credts,main="Linear Fit to TBC", ylab="TBC")
+lines(ts(fit$fitted.values,frequency = 52,start = c(1973,1)))
+plot(ts(fit$residuals,frequency = 52),main="Residuals of TBC",ylab="Residuals of TBC")
+
+par(mfrow=c(2,2))
+plot(window,main="Total Bank Credit (TBC) per Week",ylab="TBC")
+wdif<-diff(diff(window))
+plot(wdif,main="Twice Differenced TBC",ylab="Differenced TBC")
+fit=lm(window~c(1:365))
+plot(window,main="Linear Fit to TBC", ylab="TBC")
+lines(ts(fit$fitted.values,frequency = 52,start = c(2012,1)))
+plot(ts(fit$residuals,frequency = 52),main="Residuals of TBC",ylab="Residuals of TBC")
+
+adf.test(diff(window))
+#use downsample to shorten the data
+
+
+
+adf.test(dif)
+
+par(mfrow=c(3,1))
+plot(dif)
+acf(dif,main="TBC ACF")
+pacf(dif,main="TBC PACF")
+
+lcredts = log(credts)
+
+auto.arima(lcredts)
+#ARIMA (5,2,1) non log
+#lcrets = (2,2,2) Ar=c(-.3126,.0265) MA= c(-.7091,-.2635)
+#Ar=c(.1117,.0847,.0524,-.0406), MA=-.9805
+auto.arima(credts)
+
+
+#Holt-Winters forecast
+fit = HoltWinters(credts, seasonal = "multiplicative")
+hwfcast = forecast(fit, h=104)
+plot(hwfcast)
+
+par(mfrow=c(1,1))
+fit2 = Arima(credts,order=c(5,1,1),lambda=0)
+armafcast=forecast(fit2, h=52)
+armafcast
+plot(armafcast)
+
+
+#try original data, not the log
+
+#ggplot(data.table(idx = 1:2466, log_TOTBKCR = log(cred$TOTBKCR)), aes(x = idx, y = log_TOTBKCR)) +  geom_line() + geom_smooth(method='lm', formula= y~x)
+#was incorrectly assigning LM fit - unknown error
+#fit=lm(cred$TOTBKCR~c(1:2466))
+#plot.ts(cred$TOTBKCR,main="Linear Fit to log of TBC")
+#lines(ts(fit$fitted.values,frequency = 52))
+
+#credvar <- ts(cred$TOTBKCR, frequency = 52)
+#decompose(credvar)
+#plot(decompose(credvar))
+
+#par(mfrow=c(1,1))
+
+#difference the data - remove the trend
+#unit root test
+
+#par(mfrow=c(3,1))
+#plot(credvar)
+#acf(cred$TOTBKCR,main="TBC ACF")
+#pacf(credvar,main="TBC PACF")
+
+#appears to be AR(1) process
+```
+
+
