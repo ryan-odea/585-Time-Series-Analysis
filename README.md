@@ -1,1 +1,1 @@
-# 585-Time-Series-Analysis
+# MA 585 Time Series Analysis
