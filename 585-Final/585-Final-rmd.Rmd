@@ -1,17 +1,18 @@
 ---
 title: "585-Final-rmd"
 author: "Ryan O'Dea"
-date: "12/22/2020"
+date: "4/30/2020"
 output:
-  html_notebook: default
   html_document:
     df_print: paged
   pdf_document: default
+  html_notebook: default
 ---
 
-```{r setup}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
 pacman::p_load(
   ggplot2,
   tidyverse,
@@ -45,7 +46,10 @@ window %>%
        subtitle = "Data Source: https://fred.stlouisfed.org/series/TOTBKCR",
        ylab = "Billions USD")
 ```
-The data was differenced twice to remove both the seasonality and linear trend components. Plotting the ACF and the PACF of the data yielded a PACF that decayed to zero and an ACF that appears to drop off after lag two or decay to zero. This makes possible models: ARIMA(0,2,2) or a low order, twice differenced ARIMA model. Utilizing the auto.arima function in R resulted in an ARIMA(2,2,2) model with $\phi_1= -.9408$ and $\phi_2=-.0423$ ; $\theta_1= -.0768$ and $\theta_2=-.8328$ or $x_t+.9408x_{t-1}+.0423x_{t-2}=e_t-.0768e_{t-1}-.8238e_{t-2}$
+
+# Decomposing the Data
+
+The data were decomposed and we observed a clear linear trend line with a clear yearly seasonal pattern.
 
 ```{r decomposition}
 #There appears to be a linear and seasonal trend, differencing twice is probable
@@ -53,6 +57,10 @@ decomp_win <- decompose(window)
 decomp_win %>% 
   plot()
 ```
+
+# Differencing 
+
+The data were differenced twice to remove both the seasonality and linear trend components. Plotting the ACF and the PACF of the data yielded a PACF that decayed to zero and an ACF that appears to drop off after lag two or decay to zero. This makes possible models: ARIMA(0,2,2) or a low order, twice differenced ARIMA model. Utilizing the auto.arima function in R resulted in an ARIMA(2,2,2) model with $\phi_1= -.9539$ and $\phi_2=-.0391$ ; $\theta_1= -.0596$ and $\theta_2=-.8414$ ; $\Phi_1 = .0092$ or $x_t+.9408x_{t-1}+.0423x_{t-2}=e_t-.0768e_{t-1}-.8238e_{t-2}$
 
 ```{r differencing-data}
 twice_dif <- diff(diff(window))
@@ -73,22 +81,31 @@ twice_dif %>%
 #Possible a low order SARIMA model
 ```
 
-```{r arima-processing} 
-auto.arima(window)
-#Appears to be a SARIMA(2,2,2) X (1,0,0) process 
-sarima(window, 2, 2, 2, 1, 0, 0, 12)
+# (S)ARIMA Processing
 
+```{r arima-processing, results='hide'} 
+auto_arima <- auto.arima(window)
+#Appears to be a SARIMA(2,2,2) X (1,0,0) process 
+sarima_window <- invisible(sarima(window, 2, 2, 2, 1, 0, 0, 12))
 
 arima_fit <- Arima(window, order = c(2, 2, 2), seasonal = c(1, 0, 0))
 arima_fcast <- forecast(arima_fit, h =52)
+```
 
+# Forecasting
+## ARIMA Forecasting
+
+```{r}
 arima_fcast %>%
   autoplot() + 
   labs(title = "TBC Forecast from SARIMA (2,2,2)x(1,0,0)[52]",
        subtitle = "Data Source: https://fred.stlouisfed.org/series/TOTBKCR") + 
   ylab("Billions USD")
+
+auto_arima
 ```
 
+## Holt-Winters Forecasting Method
 
 ```{r HW-forecasting}
 #Holt-Winters forecast
